@@ -145,18 +145,42 @@ class MainWindow(ttk.Frame):
             y = (int(shot["y"]) / int(shot["resolution"]) * self.resizeFactor * -1) + self.canvasHeight / 2
             currentOffset = self.getDistance(0, 0 , int(shot["x"]) / int(shot["resolution"]), int(shot["y"]) / int(shot["resolution"])) * 100
             color = "blue"
-            if currentOffset < 500:
+            fill = "white"
+            if currentOffset < (500 if self.paneSize.get() == "LG" else 1600):
                 color = "yellow"
-            if currentOffset < 250: 
+                fill = "black"
+            if currentOffset < (250 if self.paneSize.get() == "LG" else 800): 
                 color = "red"
             self.canvas.create_oval(x - bulletRadius, y - bulletRadius, x + bulletRadius, y + bulletRadius, fill=color)
-            self.canvas.create_text(x, y, text=str(i), fill='white')
+            self.canvas.create_text(x, y, text=str(i), fill=fill)
             i = i + 1
 
     def evaluateResult(self, result):
         self.metricOutput.delete("1.0", END)
+        factor = "Teiler:\t"
+        value = "Wert:\t"
+        header = "Schuss:\t"
+        dist = 0
+        bestFactor = 0
+        bestValue = 0
+        bestShot = 0
+        i = 0
+        for shot in result["shots"]:
+            i = i + 1
+            val = round(11 - shot["factor"] / (250 if self.paneSize.get() == "LG" else 800), 2)
+            fact = round(shot["factor"], 2)
+            dist = dist + shot["factor"] ** 2
+            if val > bestValue: 
+                bestValue = val
+                bestShot = i
+                bestFactor = fact
+            header = header + str(i) + "\t"
+            value = value + str(val) + "\t"
+            factor = factor + str(fact) + "\t"
         # TODO create text
-        self.metricOutput.insert(END, "a\tb\nc")
+        self.metricOutput.insert(END, header + "\n" + value + "\n" + factor + "\n\n")
+        self.metricOutput.insert(END, "Distanzindikator: " + str(round(dist ** 0.5)) + "\n")
+        self.metricOutput.insert(END, "Bester Schuss: " + str(bestShot) + " (Wert: " + str(bestValue) + " , Teiler: " + str(bestFactor) + ")\n")
 
     def resized(self, event):
         self.canvasWidth = event.width
@@ -190,11 +214,11 @@ class MainWindow(ttk.Frame):
         if result != None:
             self.drawResult(result=result)
             self.evaluateResult(result=result)
-        buttonZoomIn = self.canvas.create_rectangle(5, 5, 25, 25, outline="black")
+        buttonZoomIn = self.canvas.create_rectangle(5, 5, 25, 25, outline="black", fill="white")
         bootonZoomInText = self.canvas.create_text(15, 15, text="+")
         self.canvas.tag_bind(buttonZoomIn, "<Button-1>", self.zoomIn)
         self.canvas.tag_bind(bootonZoomInText, "<Button-1>", self.zoomIn)
-        buttonZoomOut = self.canvas.create_rectangle(5, 25, 25, 45, outline="black")
+        buttonZoomOut = self.canvas.create_rectangle(5, 25, 25, 45, outline="black", fill="white")
         bootonZoomOutText = self.canvas.create_text(15, 35, text="-")
         self.canvas.tag_bind(buttonZoomOut, "<Button-1>", self.zoomOut)
         self.canvas.tag_bind(bootonZoomOutText, "<Button-1>", self.zoomOut)
