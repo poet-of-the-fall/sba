@@ -93,9 +93,9 @@ class MainWindow(ttk.Frame):
             for aiming in child.find("Aimings").find("AimingData").iter("Shot"):
                 shot = {}
                 shot["timestamp"] = aiming.find("TimeStamp").find("DateTime").text.replace("T", " ").replace("Z", "")
-                shot["resolution"] = aiming.find("Coordinate").find("CCoordinate").attrib["Resolution"]
-                shot["x"] = aiming.find("Coordinate").find("CCoordinate").find("X").text
-                shot["y"] = aiming.find("Coordinate").find("CCoordinate").find("Y").text
+                shot["resolution"] = int(aiming.find("Coordinate").find("CCoordinate").attrib["Resolution"])
+                shot["x"] = int(aiming.find("Coordinate").find("CCoordinate").find("X").text)
+                shot["y"] = int(aiming.find("Coordinate").find("CCoordinate").find("Y").text)
                 shot["factor"] = self.getDistance(0,0,shot["x"],shot["y"])
                 shooter["shots"].append(shot)
             self.results.append(shooter)
@@ -141,9 +141,9 @@ class MainWindow(ttk.Frame):
         bulletRadius = self.bulletSize / 2 * self.resizeFactor
         i = 1
         for shot in result["shots"]:
-            x = int(shot["x"]) / int(shot["resolution"]) * self.resizeFactor + self.canvasWidth / 2
-            y = (int(shot["y"]) / int(shot["resolution"]) * self.resizeFactor * -1) + self.canvasHeight / 2
-            currentOffset = self.getDistance(0, 0 , int(shot["x"]) / int(shot["resolution"]), int(shot["y"]) / int(shot["resolution"])) * 100
+            x = shot["x"] / shot["resolution"] * self.resizeFactor + self.canvasWidth / 2
+            y = (shot["y"] / shot["resolution"] * self.resizeFactor * -1) + self.canvasHeight / 2
+            currentOffset = self.getDistance(0, 0 , abs(shot["x"] + self.bulletSize / 2) / shot["resolution"], abs(shot["y"] + self.bulletSize / 2) / shot["resolution"]) * 100
             color = "blue"
             fill = "white"
             if currentOffset < (500 if self.paneSize.get() == "LG" else 1600):
@@ -164,12 +164,16 @@ class MainWindow(ttk.Frame):
         bestFactor = 0
         bestValue = 0
         bestShot = 0
+        focusX = 0
+        focusY = 0
         i = 0
         for shot in result["shots"]:
             i = i + 1
             val = round(11 - shot["factor"] / (250 if self.paneSize.get() == "LG" else 800), 2)
             fact = round(shot["factor"], 2)
             dist = dist + shot["factor"] ** 2
+            focusX = focusX + shot["x"]
+            focusY = focusY + shot["y"]
             if val > bestValue: 
                 bestValue = val
                 bestShot = i
@@ -177,10 +181,11 @@ class MainWindow(ttk.Frame):
             header = header + str(i) + "\t"
             value = value + str(val) + "\t"
             factor = factor + str(fact) + "\t"
-        # TODO create text
+        # TODO create text, schwerpunkt
         self.metricOutput.insert(END, header + "\n" + value + "\n" + factor + "\n\n")
-        self.metricOutput.insert(END, "Distanzindikator: " + str(round(dist ** 0.5)) + "\n")
+        self.metricOutput.insert(END, "Distanzindikator: " + str(round(dist ** 0.5 / i)) + "\n")
         self.metricOutput.insert(END, "Bester Schuss: " + str(bestShot) + " (Wert: " + str(bestValue) + " , Teiler: " + str(bestFactor) + ")\n")
+        self.metricOutput.insert(END, "Schwerpunkt: " + str(round(focusX / result["shots"][0]["resolution"])) + "mm " + ("links" if focusX < 0 else "rechts") + ", " + str(round(focusY / result["shots"][0]["resolution"])) + "mm " +("tief" if focusY < 0 else "hoch"))
 
     def resized(self, event):
         self.canvasWidth = event.width
@@ -203,7 +208,7 @@ class MainWindow(ttk.Frame):
         maxOffset = 0
         if result != None:
             for shot in result["shots"]:
-                currentOffset = self.getDistance(0, 0 , int(shot["x"]) / int(shot["resolution"]), int(shot["y"]) / int(shot["resolution"])) + self.bulletSize / 2
+                currentOffset = self.getDistance(0, 0 , shot["x"] / shot["resolution"], shot["y"] / shot["resolution"]) + self.bulletSize / 2
                 if abs(currentOffset) > maxOffset:
                     maxOffset = currentOffset
         self.canvas.delete("all")
@@ -258,8 +263,8 @@ class MainWindow(ttk.Frame):
             offset = offset - rings[-i-1]
     
     def getDistance(self, x1, y1, x2, y2):
-        dx = int(x1) - int(x2)
-        dy = int(y1) - int(y2)
+        dx = x1 - x2
+        dy = y1 - y2
         return math.sqrt(dx * dx + dy * dy)
 
 if __name__ == '__main__':
